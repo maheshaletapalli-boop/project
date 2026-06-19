@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AquaSense — Water Tank Level Monitoring</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">💧</span>
+        <div>
+          <h1>AquaSense</h1>
+          <p>Water Tank Level Monitoring System</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="index.html" class="nav-link active">Dashboard</a>
+        <a href="project-info.html" class="nav-link">Project Info</a>
+      </nav>
+      <div class="header-status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="systemStatus">System Online</span>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="panel tank-panel">
+        <div class="panel-header">
+          <h2>Tank Level Indicator</h2>
+          <span class="badge" id="tankBadge">Normal</span>
+        </div>
+
+        <div class="tank-display">
+          <div class="scale-column">
+            <span>100%</span>
+            <span>75%</span>
+            <span>50%</span>
+            <span>25%</span>
+            <span>0%</span>
+          </div>
+
+          <div class="tank-container">
+            <div class="tank-body">
+              <div class="tank-mark" style="top: 0%"></div>
+              <div class="tank-mark" style="top: 25%"></div>
+              <div class="tank-mark" style="top: 50%"></div>
+              <div class="tank-mark" style="top: 75%"></div>
+              <div class="water-fill" id="waterFill">
+                <div class="water-surface"></div>
+              </div>
+              <div class="sensor-tag">
+                <span class="sensor-dot"></span>
+                Ultrasonic Sensor
+              </div>
+            </div>
+            <p class="tank-capacity">Capacity: 2,500 Litres</p>
+          </div>
+
+          <div class="level-summary">
+            <div class="level-ring">
+              <svg viewBox="0 0 120 120">
+                <circle class="ring-bg" cx="60" cy="60" r="52"/>
+                <circle class="ring-fill" id="levelRing" cx="60" cy="60" r="52"/>
+              </svg>
+              <div class="level-ring-text">
+                <span id="levelPercent">65</span>
+                <small>%</small>
+              </div>
+            </div>
+            <p class="level-label">Current Level</p>
+            <p class="level-volume" id="summaryVolume">1,625 L</p>
+          </div>
+        </div>
+
+        <div class="chart-section">
+          <div class="chart-header">
+            <h3>Level History</h3>
+            <span class="chart-note">Last 20 readings</span>
+          </div>
+          <canvas id="levelChart" height="140"></canvas>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <section class="panel metrics-panel">
+          <h2>Sensor Readings</h2>
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span class="metric-label">Water Level</span>
+              <span class="metric-value" id="metricLevel">65.0%</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Volume</span>
+              <span class="metric-value" id="metricVolume">1,625 L</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Capacity</span>
+              <span class="metric-value">2,500 L</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Flow Rate</span>
+              <span class="metric-value" id="metricFlow">0.0 L/min</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Temperature</span>
+              <span class="metric-value" id="metricTemp">24.3 °C</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Pressure</span>
+              <span class="metric-value" id="metricPressure">1.02 bar</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel controls-panel">
+          <h2>Manual Controls</h2>
+          <div class="control-group">
+            <label for="levelSlider">Set Water Level</label>
+            <div class="slider-row">
+              <input type="range" id="levelSlider" min="0" max="100" value="65" step="0.5">
+              <span class="slider-value" id="sliderValue">65%</span>
+            </div>
+          </div>
+          <div class="control-buttons">
+            <button class="btn btn-fill" id="btnFill">Simulate Fill</button>
+            <button class="btn btn-drain" id="btnDrain">Simulate Drain</button>
+            <button class="btn btn-auto" id="btnAuto">Live Simulation</button>
+          </div>
+        </section>
+
+        <section class="panel alerts-panel">
+          <h2>Alert Thresholds</h2>
+          <div class="alert-zones">
+            <div class="zone zone-low">
+              <span class="zone-bar"></span>
+              <div>
+                <strong>Low</strong>
+                <span>&lt; 20%</span>
+              </div>
+            </div>
+            <div class="zone zone-normal">
+              <span class="zone-bar"></span>
+              <div>
+                <strong>Normal</strong>
+                <span>20% – 85%</span>
+              </div>
+            </div>
+            <div class="zone zone-high">
+              <span class="zone-bar"></span>
+              <div>
+                <strong>High</strong>
+                <span>&gt; 85%</span>
+              </div>
+            </div>
+          </div>
+          <p class="alert-message" id="alertMessage">All systems nominal. Water level within safe range.</p>
+        </section>
+
+        <section class="panel log-panel">
+          <h2>Data Log</h2>
+          <div class="log-table-wrap">
+            <table class="log-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Level</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="logBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <footer class="footer">
+      <span>Last updated: <strong id="lastUpdated">--</strong></span>
+      <span>Sensor ID: WT-001 | Project: IoT Water Monitoring</span>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
