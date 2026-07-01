@@ -136,6 +136,23 @@ body {
   border-radius: 50%;
   background: var(--success);
   box-shadow: 0 0 12px var(--success);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.status-dot.alarm {
+  background: var(--danger);
+  box-shadow: 0 0 12px var(--danger);
+  animation: alarm-pulse 1s ease-in-out infinite;
+}
+
+.alarm-overflow .status-dot.alarm {
+  background: var(--warning);
+  box-shadow: 0 0 12px var(--warning);
+}
+
+@keyframes alarm-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.15); }
 }
 
 /* Main layout */
@@ -647,6 +664,29 @@ input[type="range"]::-webkit-slider-thumb:hover {
   background: rgba(239, 68, 68, 0.1);
   border-color: rgba(239, 68, 68, 0.2);
   color: var(--danger);
+}
+
+.alarm-active .alert-message {
+  animation: alarm-flash 1.2s ease-in-out infinite;
+}
+
+.alarm-low .alert-message.danger {
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.25);
+}
+
+.alarm-overflow .alert-message.warning {
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.25);
+}
+
+@keyframes alarm-flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+
+.zone-active {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  outline: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Data log */

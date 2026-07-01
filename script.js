@@ -4,6 +4,8 @@
   const CAPACITY_LITERS = 2500;
   const RING_CIRCUMFERENCE = 2 * Math.PI * 52;
   const HISTORY_SIZE = 20;
+  const LOW_LEVEL_THRESHOLD = 20;
+  const HIGH_LEVEL_THRESHOLD = 85;
 
   let currentLevel = 65;
   let targetLevel = 65;
@@ -12,6 +14,9 @@
   let drainActive = false;
   let autoDirection = 1;
   let levelHistory = [];
+  let alarmState = null;
+  let alarmInterval = null;
+  let audioContext = null;
 
   const els = {
     waterFill: document.getElementById('waterFill'),
@@ -33,23 +38,142 @@
     lastUpdated: document.getElementById('lastUpdated'),
     logBody: document.getElementById('logBody'),
     levelChart: document.getElementById('levelChart'),
+    alarmSound: document.getElementById('alarmSound'),
+    statusDot: document.getElementById('statusDot'),
+    systemStatus: document.getElementById('systemStatus'),
+    zoneLow: document.querySelector('.zone-low'),
+    zoneNormal: document.querySelector('.zone-normal'),
+    zoneHigh: document.querySelector('.zone-high'),
   };
 
   function getStatus(level) {
-    if (level < 20) {
-      return { badge: 'Low Level', cls: 'danger', log: 'Low', msg: 'Critical: Water level below 20%. Refill immediately.' };
+    if (level < LOW_LEVEL_THRESHOLD) {
+      return {
+        badge: 'Low Level',
+        cls: 'danger',
+        log: 'Low',
+        alarm: 'low',
+        msg: '⚠ LOW WATER LEVEL! Level below ' + LOW_LEVEL_THRESHOLD + '%. Refill immediately.',
+      };
     }
-    if (level > 85) {
-      return { badge: 'High Level', cls: 'warning', log: 'High', msg: 'Warning: Water level above 85%. Risk of overflow.' };
+    if (level > HIGH_LEVEL_THRESHOLD) {
+      return {
+        badge: 'Overflow',
+        cls: 'warning',
+        log: 'High',
+        alarm: 'overflow',
+        msg: '🚨 OVERFLOW ALERT! Level above ' + HIGH_LEVEL_THRESHOLD + '%. Tank is almost full.',
+      };
     }
-    return { badge: 'Normal', cls: '', log: 'Normal', msg: 'All systems nominal. Water level within safe range.' };
+    return {
+      badge: 'Normal',
+      cls: '',
+      log: 'Normal',
+      alarm: null,
+      msg: 'All systems nominal. Water level within safe range.',
+    };
+  }
+
+  function ensureAudioContext() {
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+    return audioContext;
+  }
+
+  function playBeep(frequency, duration) {
+    const ctx = ensureAudioContext();
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    oscillator.type = 'square';
+    oscillator.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + duration);
+  }
+
+  function startAlarm(type) {
+    if (alarmState === type) return;
+
+    stopAlarm();
+    alarmState = type;
+
+    const frequency = type === 'low' ? 440 : 880;
+    const intervalMs = type === 'low' ? 1200 : 600;
+
+    playBeep(frequency, 0.2);
+    alarmInterval = setInterval(function () {
+      playBeep(frequency, 0.2);
+    }, intervalMs);
+
+    if (els.alarmSound) {
+      els.alarmSound.loop = true;
+      els.alarmSound.play().catch(function () {});
+    }
+  }
+
+  function stopAlarm() {
+    alarmState = null;
+
+    if (alarmInterval) {
+      clearInterval(alarmInterval);
+      alarmInterval = null;
+    }
+
+    if (els.alarmSound) {
+      els.alarmSound.pause();
+      els.alarmSound.currentTime = 0;
+    }
+  }
+
+  function updateAlarmState(level, status) {
+    if (status.alarm === 'low') {
+      startAlarm('low');
+    } else if (status.alarm === 'overflow') {
+      startAlarm('overflow');
+    } else {
+      stopAlarm();
+    }
+
+    document.body.classList.toggle('alarm-active', !!status.alarm);
+    document.body.classList.toggle('alarm-low', status.alarm === 'low');
+    document.body.classList.toggle('alarm-overflow', status.alarm === 'overflow');
+
+    if (els.statusDot) {
+      els.statusDot.className = 'status-dot' + (status.alarm ? ' alarm' : '');
+    }
+
+    if (els.systemStatus) {
+      if (status.alarm === 'low') {
+        els.systemStatus.textContent = 'Alarm: Low Water Level';
+        els.systemStatus.style.color = 'var(--danger)';
+      } else if (status.alarm === 'overflow') {
+        els.systemStatus.textContent = 'Alarm: Overflow Risk';
+        els.systemStatus.style.color = 'var(--warning)';
+      } else {
+        els.systemStatus.textContent = 'System Online';
+        els.systemStatus.style.color = 'var(--success)';
+      }
+    }
+
+    if (els.zoneLow) els.zoneLow.classList.toggle('zone-active', status.alarm === 'low');
+    if (els.zoneNormal) els.zoneNormal.classList.toggle('zone-active', !status.alarm);
+    if (els.zoneHigh) els.zoneHigh.classList.toggle('zone-active', status.alarm === 'overflow');
   }
 
   function setWaterVisual(level) {
     els.waterFill.style.height = level + '%';
     els.waterFill.classList.remove('low', 'high');
-    if (level < 20) els.waterFill.classList.add('low');
-    else if (level > 85) els.waterFill.classList.add('high');
+    if (level < LOW_LEVEL_THRESHOLD) els.waterFill.classList.add('low');
+    else if (level > HIGH_LEVEL_THRESHOLD) els.waterFill.classList.add('high');
   }
 
   function updateUI(level) {
@@ -70,11 +194,12 @@
     els.alertMessage.textContent = status.msg;
     els.alertMessage.className = 'alert-message' + (status.cls ? ' ' + status.cls : '');
 
-    const ringColor = level < 20 ? '#ef4444' : level > 85 ? '#f59e0b' : '#38bdf8';
+    const ringColor = level < LOW_LEVEL_THRESHOLD ? '#ef4444' : level > HIGH_LEVEL_THRESHOLD ? '#f59e0b' : '#38bdf8';
     els.levelRing.style.stroke = ringColor;
 
     els.lastUpdated.textContent = new Date().toLocaleTimeString();
     setWaterVisual(level);
+    updateAlarmState(level, status);
   }
 
   function updateFlowDisplay() {
@@ -202,7 +327,11 @@
     }
   }
 
+  document.addEventListener('click', ensureAudioContext, { passive: true });
+  document.addEventListener('keydown', ensureAudioContext, { passive: true });
+
   els.levelSlider.addEventListener('input', function () {
+    ensureAudioContext();
     targetLevel = parseFloat(this.value);
     fillActive = false;
     drainActive = false;
